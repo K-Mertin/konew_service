@@ -2,12 +2,14 @@
 from flask import Flask, jsonify, request, g
 from DataAccess import DataAccess
 from flask_cors import CORS
+from Logger import Logger
 import json
 import configparser
 import logging
 import os
+import datetime
 
-app = Flask(__name__)
+app = Flask('Flask-Service')
 CORS(app)
 
 @app.before_request
@@ -16,7 +18,7 @@ def before_request():
 
 @app.route('/api/requests', methods=['GET'])
 def get_all_requests():
-    app.logger.info('get_all_requests')
+    # app.logger.info('get_all_requests')
     pageSize = request.args.get('pageSize', default =10, type = int)
     pageNumber = request.args.get('pageNumber', default = 1, type = int)
     
@@ -53,7 +55,7 @@ def get_all_requests():
 
 @app.route('/api/documents/<requestId>', methods=['GET'])
 def get_all_documents(requestId):
-    app.logger.info('get_all_documents'+ requestId)
+    # app.logger.info('get_all_documents:'+ requestId)
     pageSize = request.args.get('pageSize', default = 10, type = int)
     pageNumber = request.args.get('pageNumber', default = 1, type = int)
     sortBy = request.args.get('sortBy', default = 'keys', type= str)
@@ -77,19 +79,19 @@ def get_all_documents(requestId):
 
     for doc in documents:
         results["data"].append({
-            "title": doc["title"],
-            "searchKeys":doc["searchKeys"],
-            "referenceKeys":doc["referenceKeys"],
-            "tags":doc["tags"],
-            "source":doc["source"]
+            "title": doc["_id"]["title"],
+            "searchKeys":doc["_id"]["searchKeys"],
+            "referenceKeys":doc["_id"]["referenceKeys"],
+            "tags":doc["_id"]["tags"],
+            "source":doc["_id"]["source"]
         })
     # print(results)
     return jsonify(results)
 
 @app.route('/api/requests', methods=['POST'])
 def add_request():
-    app.logger.info('add_request')
     data=json.loads(request.data)
+    app.logger.info('add_request:'+ str(data['searchKeys']))
 
     g.dataAccess.add_request({
         "searchKeys": data['searchKeys'],
@@ -99,8 +101,8 @@ def add_request():
 
 @app.route('/api/requests', methods=['PUT'])
 def change_request():
-    app.logger.info('change_request')
     data=json.loads(request.data)
+    app.logger.info('change_request:'+data['_id'])
     print(data['referenceKeys'])
     # print()
     g.dataAccess.change_request_reference(data['_id'],data['referenceKeys'])
@@ -109,9 +111,8 @@ def change_request():
 
 @app.route('/api/requests/delete', methods=['PUT'])
 def remove_request():
-    app.logger.info('remove_request')
     data=json.loads(request.data)
-
+    app.logger.info('remove_request:'+data['_id'])
     # print(data)
     g.dataAccess.remove_request(data['_id'])
     
@@ -132,7 +133,7 @@ def Setting():
     if not os.path.isdir(logPath):
         os.mkdir(logPath)
 
-    fileHandler = logging.FileHandler(logPath+'FlaskService.log')
+    fileHandler = logging.FileHandler(logPath+ datetime.datetime.now().strftime("%Y%m%d")+ '_' +app.name+'.log')
     fileHandler.setLevel(logging.INFO)
     fileHandler.setFormatter(formatter)
 

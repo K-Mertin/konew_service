@@ -7,11 +7,13 @@ import re
 import configparser
 import logging
 import os
+from Logger import Logger
 
 class DataAccess:
 
     def __init__(self):
         self.Setting()
+        self.logger = Logger('DataAccess-Flask')
         self.client = MongoClient(self.ipAddress, username=self.user , password=self.password, authSource=self.dbName )
         self.db = self.client['konew']
         # self.logger.info( 'Initialized')
@@ -21,40 +23,41 @@ class DataAccess:
         with open('Config.ini') as file:
             self.config.readfp(file)
 
-        self.logPath = self.config.get('Options','Log_Path')
         self.ipAddress = self.config.get('Mongo','ipAddress')
         self.dbName = self.config.get('Mongo','dbName')
         self.user = self.config.get('Mongo','user')
         self.password = self.config.get('Mongo','password')
         
-        formatter = logging.Formatter('[%(name)-12s %(levelname)-8s] %(asctime)s - %(message)s')
-        self.logger=logging.getLogger(__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
+        # formatter = logging.Formatter('[%(name)-12s %(levelname)-8s] %(asctime)s - %(message)s')
+        # self.logger=logging.getLogger(__class__.__name__)
+        # self.logger.setLevel(logging.DEBUG)
         
-        if not os.path.isdir(self.logPath):
-            os.mkdir(self.logPath)
+        # if not os.path.isdir(self.logPath):
+        #     os.mkdir(self.logPath)
 
-        fileHandler = logging.FileHandler(self.logPath+__class__.__name__+'_log.txt')
-        fileHandler.setLevel(logging.INFO)
-        fileHandler.setFormatter(formatter)
+        # fileHandler = logging.FileHandler(self.logPath+__class__.__name__+'_log.txt')
+        # fileHandler.setLevel(logging.INFO)
+        # fileHandler.setFormatter(formatter)
 
-        streamHandler = logging.StreamHandler()
-        streamHandler.setLevel(logging.DEBUG)
-        streamHandler.setFormatter(formatter)
+        # streamHandler = logging.StreamHandler()
+        # streamHandler.setLevel(logging.DEBUG)
+        # streamHandler.setFormatter(formatter)
 
-        self.logger.addHandler(fileHandler)
-        self.logger.addHandler(streamHandler)
+        # self.logger.addHandler(fileHandler)
+        # self.logger.addHandler(streamHandler)
 
         # self.logger.info('Finish DataAccess Setting')
 
     def add_request(self, request):
+        self.logger.logger.info('add_request:' + str(request['searchKeys']) )
         request['status'] = 'created'
         request['createDate'] = datetime.datetime.now()
-        request['requestId'] = str(datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
+        request['requestId'] = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
         request['searchKeys'] = list(map(lambda x:{"key":x, "count":0}, request['searchKeys']))
         return self.db['Requests'].insert(request)
 
     def change_request_reference(self, id, refKey):
+        self.logger.logger.info('change_request_reference:' + id + str(refKey))
         return self.db['Requests'].update_one({'_id': ObjectId(id)}, {'$set': {'referenceKeys': refKey, 'status': 'modified'}})
     
     def update_document_reference(self, collection, id, referenceKeys ):
@@ -89,6 +92,7 @@ class DataAccess:
         return self.db['Requests'].update_one({'_id': ObjectId(id)}, {'$set': {'status': 'finished'}})
 
     def remove_request(self, id):
+        self.logger.logger.info('remove_request:' + id )
         return self.db['Requests'].update_one({'_id': ObjectId(id)}, {'$set': {'status': 'removed'}})
 
     def insert_documents(self, collection, documents):
@@ -97,7 +101,7 @@ class DataAccess:
     def get_allPaged_documents(self, collection='1514966746.2558856', pageSize=10, pageNum=1, sortBy="keys", filters=[]):
         skips = pageSize * (pageNum - 1)
         print(filters)
-        filters = list(map(lambda x : [{"$or":[{'searchKeys':x},{'referenceKeys':x},{'tags':x}]}],filters ))
+        filters = list(map(lambda x : [{"$or":[{'_id.searchKeys':x},{'_id.referenceKeys':x},{'_id.tags':x}]}],filters ))
         filters = sum(filters,[])
 
         aggregateList = []
@@ -115,14 +119,28 @@ class DataAccess:
                             "skLength":{"$size":"$searchKeys"},
                     }}
         )
+        aggregateList.append(
+            {
+                            "$group": {"_id" : {
+                                "searchKeys":"$searchKeys",
+                                "referenceKeys":"$referenceKeys",
+                                "tags":"$tags",
+                                "title": "$title",
+                                "source":"$source",
+                                "date":"$date",
+                                "skLength":"$skLength",
+                            }}}
+        )
+       
         if len(filters) >0:
             aggregateList.append( {  "$match":{"$and":filters}} )
 
         if sortBy == "keys":
-            aggregateList.append( { "$sort": {"skLength":-1,"rkLength":-1, "date": -1}})
+            aggregateList.append( { "$sort": {"_id.skLength":-1,"_id.rkLength":-1, "_id.date": -1}})
         else:
-            aggregateList.append( { "$sort": {"skLength":-1,"date": -1,"rkLength":-1}})
+            aggregateList.append( { "$sort": {"_id.skLength":-1,"_id.date": -1,"_id.rkLength":-1}})
 
+        
         print(aggregateList)
         aggregateList.append( { "$skip": skips})
 
@@ -131,14 +149,35 @@ class DataAccess:
         return self.db[collection].aggregate(aggregateList)
     
     def get_documents_count(self, collection, filters=[]):
+        filters = list(map(lambda x : [{"$or":[{'_id.searchKeys':x},{'_id.referenceKeys':x},{'_id.tags':x}]}],filters ))
+        filters = sum(filters,[])
+
+        aggregateList = []
+
+        aggregateList.append(
+            {
+                            "$group": {"_id" : {
+                                "searchKeys":"$searchKeys",
+                                "referenceKeys":"$referenceKeys",
+                                "tags":"$tags",
+                                "title": "$title",
+                                "source":"$source",
+                                "date":"$date",
+                                "skLength":"$skLength",
+                            }}}
+        )
 
         if len(filters) >0:
-            filters = list(map(lambda x : [{"$or":[{'searchKeys':x},{'referenceKeys':x},{'tags':x}]}],filters ))
-            filters = sum(filters,[])
-            filters = {"$and":filters}
-            return self.db[collection].find(filters).count()
-        else:
-            return self.db[collection].find().count()
+            aggregateList.append( {  "$match":{"$and":filters}} )
+
+        return len(list(self.db[collection].aggregate(aggregateList)))
+        # if len(filters) >0:
+        #     filters = list(map(lambda x : [{"$or":[{'searchKeys':x},{'referenceKeys':x},{'tags':x}]}],filters ))
+        #     filters = sum(filters,[])
+        #     filters = {"$and":filters}
+        #     return self.db[collection].find(filters).count()
+        # else:
+        #     return self.db[collection].find().count()
 
     def remove_all_documents(self, collection):
         return self.db[collection].drop() 
