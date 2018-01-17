@@ -65,11 +65,11 @@ class DataAccess:
 
     def get_allPaged_requests(self, pageSize=10, pageNum=1):
         skips = pageSize * (pageNum - 1)
-        totalCount = self.db['Requests'].find({'status': {"$in": ['modified','created','processing','finished']}}).count()
+        totalCount = self.db['Requests'].find({'status': {"$in": ['modified','created','processing','finished','failed']}}).count()
 
         result = {
             "totalCount":totalCount,
-            "data": self.db['Requests'].find({'status': {"$in": ['modified','created','processing','finished']}}).sort("createDate", pymongo.DESCENDING).skip(skips).limit(pageSize)
+            "data": self.db['Requests'].find({'status': {"$in": ['modified','created','processing','finished','failed']}}).sort("createDate", pymongo.DESCENDING).skip(skips).limit(pageSize)
         }
         return result
 
