@@ -41,12 +41,12 @@ def get_all_requests():
     # totalCount = g.dataAccess.get_documents_count(requestId)
 
     for r in requests:
-        # print(request["searchKeys"])
+        # print(g.dataAccess.get_searchKey_progress(r["requestId"],x['key']))
         results["data"].append({
             "_id":str(r["_id"]),
             "requestId":r["requestId"],
             "status":r["status"],
-            "searchKeys":list(map(lambda x : x['key'], r['searchKeys']))  ,
+            "searchKeys":list(map(lambda x : x['key']+'('+str(g.dataAccess.get_searchKey_progress(r["requestId"],x['key']))+'/'+str(x['count'])+')', r['searchKeys']))  ,
             "referenceKeys":r["referenceKeys"],
             "createDate":r["createDate"]
         })

@@ -27,26 +27,6 @@ class DataAccess:
         self.dbName = self.config.get('Mongo','dbName')
         self.user = self.config.get('Mongo','user')
         self.password = self.config.get('Mongo','password')
-        
-        # formatter = logging.Formatter('[%(name)-12s %(levelname)-8s] %(asctime)s - %(message)s')
-        # self.logger=logging.getLogger(__class__.__name__)
-        # self.logger.setLevel(logging.DEBUG)
-        
-        # if not os.path.isdir(self.logPath):
-        #     os.mkdir(self.logPath)
-
-        # fileHandler = logging.FileHandler(self.logPath+__class__.__name__+'_log.txt')
-        # fileHandler.setLevel(logging.INFO)
-        # fileHandler.setFormatter(formatter)
-
-        # streamHandler = logging.StreamHandler()
-        # streamHandler.setLevel(logging.DEBUG)
-        # streamHandler.setFormatter(formatter)
-
-        # self.logger.addHandler(fileHandler)
-        # self.logger.addHandler(streamHandler)
-
-        # self.logger.info('Finish DataAccess Setting')
 
     def add_request(self, request):
         self.logger.logger.info('add_request:' + str(request['searchKeys']) )
@@ -180,6 +160,24 @@ class DataAccess:
         # else:
         #     return self.db[collection].find().count()
 
+    def get_searchKey_progress(self, collection, searchKey):
+        # print(collection+'_'+searchKey)
+        documents = self.db[collection].aggregate(
+                            [{
+                                "$group": {
+                                    "_id" : {
+                                        "searchKeys":"$searchKeys",
+                                        "title": "$title",
+                                        "date":"$date",
+                                        }
+                                }
+                            }, {
+                                "$match":{
+                                    '_id.searchKeys':searchKey
+                                    }
+                                }])
+        return len(list(documents))
+
     def remove_all_documents(self, collection):
         return self.db[collection].drop() 
 
@@ -211,7 +209,12 @@ if __name__ == "__main__":
 
     # remove_request(db,id)
     # results=db.get_all_documents()
-    print(db.get_documents_count('20180115174908252636-康業資本'))
+    print(len(list(db.db['20180117141005057082-新華生科技'].aggregate([ {
+                            "$group": {"_id" : {
+                                "searchKeys":"$searchKeys",
+                                "title": "$title",
+                                "date":"$date",
+                            }}},{"$match":{'_id.searchKeys':'玉珍'}}]))))
     # results = db.db.get
     # db.change_reference('5a4ca418f6fadc82283bba6a',['臺中','基隆'])
     # print(db.get_modified_requests().count())
