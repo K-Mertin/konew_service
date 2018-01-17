@@ -126,10 +126,11 @@ class DataAccess:
                                 "referenceKeys":"$referenceKeys",
                                 "tags":"$tags",
                                 "title": "$title",
-                                "source":"$source",
+                                # "source":"$source",
                                 "date":"$date",
+                                "rkLength":"$rkLength",
                                 "skLength":"$skLength",
-                            }}}
+                            },"source":{ "$first": "$source" }}}
         )
        
         if len(filters) >0:
@@ -161,10 +162,10 @@ class DataAccess:
                                 "referenceKeys":"$referenceKeys",
                                 "tags":"$tags",
                                 "title": "$title",
-                                "source":"$source",
+                                # "source":"$source",
                                 "date":"$date",
                                 "skLength":"$skLength",
-                            }}}
+                            },"source":{ "$first": "$source" }}}
         )
 
         if len(filters) >0:
@@ -210,7 +211,7 @@ if __name__ == "__main__":
 
     # remove_request(db,id)
     # results=db.get_all_documents()
-    db.remove_all_documents('20180110075949138853-康業資本')
+    print(db.get_documents_count('20180115174908252636-康業資本'))
     # results = db.db.get
     # db.change_reference('5a4ca418f6fadc82283bba6a',['臺中','基隆'])
     # print(db.get_modified_requests().count())

@@ -83,7 +83,7 @@ def get_all_documents(requestId):
             "searchKeys":doc["_id"]["searchKeys"],
             "referenceKeys":doc["_id"]["referenceKeys"],
             "tags":doc["_id"]["tags"],
-            "source":doc["_id"]["source"]
+            "source":doc["source"]
         })
     # print(results)
     return jsonify(results)
