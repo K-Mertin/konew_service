@@ -181,9 +181,108 @@ class DataAccess:
     def remove_all_documents(self, collection):
         return self.db[collection].drop() 
 
+    def insert_relation(self, relation):
+        relation['createDate'] = datetime.datetime.now()
+        relation['modifyDate'] = datetime.datetime.now()
+        relation['createUser'] = relation['user']
+        relation['modifyUser'] = relation['user']
+        relation.__delitem__('user')
+
+        return self.db['Relations'].insert(relation)
+    
+    def update_relation(self, id, relation):
+        return self.db['Relations'].update_one(id, relation)
+
+    def delete_relation(self, id):
+        return self.db['Relations'].delete_one(id)
+    
+    def get_relations(self, queryType, key):
+        if queryType == 'reason':
+            return self.db['Relations'].find({queryType:key})
+
+        return self.db['Relations'].find({'$or':[{'objects.'+queryType:key},{'subjects.'+queryType :key}]})
+
+    def get_relation_keyList(self, queryType, key):
+        if queryType == 'reason':
+            print('/^'+key+'/')
+            return self.db['Relations'].aggregate([{'$project':{'reason':1}},{'$group':{'_id':'$reason'}},{'$match':{'_id':{'$regex':'^'+key}}}])
+
+        return self.db['Relations'].aggregate([{'$project': {  "combined":  { '$setUnion': [ "$subjects."+queryType, "$objects."+queryType ]}}},{ "$unwind": "$combined" }, { "$group": {"_id": "$combined"}},{"$match":{"_id":{ '$regex': '^'+key} }} ])
+
 if __name__ == "__main__":
     db = DataAccess()
 
+# db.Relations.aggregate([{'$project': {  "combined":  { '$setUnion': [ "$subjects.idNumber", "$objects.idNumber" ]}}},{ "$unwind": "$combined" }, { "$group": {"_id": "$combined"}},{"$match":{"_id":{ '$regex': /^/ } }} ])
+
+    relations = [{
+    "reason": '違約',
+    "subjects": [{
+        "name": 'A借款人A',
+        "idNumber": 'A001',
+        "memo": '主要'
+    }, {
+        "name": 'B借款人B',
+        "idNumber": 'A002',
+        "memo": '次要'
+    }],
+    "objects": [{
+        "name": 'C關係人C',
+        "idNumber": 'AC001',
+        "memo": '同仁'
+    }, {
+        "name": 'D關係人D',
+        "idNumber": 'D001',
+        "memo": '親友'
+    }],
+    "user": 'test1',
+}, {
+    "reason": '高風險',
+    "subjects": [{
+        "name": 'E借款人E',
+        "idNumber": 'AE001',
+        "memo": '主要'
+    }, {
+        "name": 'F借款人F',
+        "idNumber": 'F001',
+        "memo": '次要'
+    }],
+    "objects": [{
+        "name": 'G關係人G',
+        "idNumber": 'AG001',
+        "memo": '同仁'
+    }, {
+        "name": 'H關係人H',
+        "idNumber": 'AH001',
+        "memo": '親友'
+    }],
+   "user": 'test1',
+}, {
+    "reason": '高風險',
+    "subjects": [{
+        "name": 'E借款人E',
+        "idNumber": 'AE001',
+        "memo": '主要'
+    }, {
+        "name": 'F借款人F',
+        "idNumber": 'F001',
+        "memo": '次要'
+    }],
+    "objects": [{
+        "name": 'G關係人G',
+        "idNumber": 'AG001',
+        "memo": '同仁'
+    }, {
+        "name": 'H關係人H',
+        "idNumber": 'AH001',
+        "memo": '親友'
+    }],
+     "user": 'test1',
+}]
+
+    # print(relations)
+    for relation in relations:
+        db.insert_relation(relation)
+        # print(relation)
     # request = {
     #     "searchKeys": ["郭國勝"],
     #     "referenceKeys": ["臺中"]
@@ -209,12 +308,12 @@ if __name__ == "__main__":
 
     # remove_request(db,id)
     # results=db.get_all_documents()
-    print(len(list(db.db['20180117141005057082-新華生科技'].aggregate([ {
-                            "$group": {"_id" : {
-                                "searchKeys":"$searchKeys",
-                                "title": "$title",
-                                "date":"$date",
-                            }}},{"$match":{'_id.searchKeys':'玉珍'}}]))))
+    # print(len(list(db.db['20180117141005057082-新華生科技'].aggregate([ {
+    #                         "$group": {"_id" : {
+    #                             "searchKeys":"$searchKeys",
+    #                             "title": "$title",
+    #                             "date":"$date",
+    #                         }}},{"$match":{'_id.searchKeys':'玉珍'}}]))))
     # results = db.db.get
     # db.change_reference('5a4ca418f6fadc82283bba6a',['臺中','基隆'])
     # print(db.get_modified_requests().count())

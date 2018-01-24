@@ -118,6 +118,43 @@ def remove_request():
     
     return jsonify("deleted")
 
+@app.route('/api/relation/key/<queryType>/<key>', methods=['GET'])
+def get_relation_keyList(queryType,key):
+    print(queryType,key)
+    results = g.dataAccess.get_relation_keyList(queryType,key)
+
+    return jsonify(list(map(lambda x : x['_id'] ,list(results))))
+
+@app.route('/api/relation/<queryType>/<key>', methods=['GET'])
+def get_relations(queryType,key):
+    results = g.dataAccess.get_relations(queryType,key)
+
+    relations = [] 
+    for r in results:
+        relations.append({
+            '_id':str(r['_id']),
+            'reason':r['reason'],
+            'subjects':r['subjects'],
+            'objects':r['objects'],
+            'createDate':r['createDate'],
+            'createUser':r['createUser'],
+            'modifyDate':r['modifyDate'],
+            'modifyUser':r['modifyUser']
+        })
+
+    return jsonify(relations)
+
+@app.route('/api/relation', methods=['POST'])
+def add_relation():
+    
+    data=json.loads(request.data)
+    print(data)
+    app.logger.info('add_relation:'+ str(data))
+
+    g.dataAccess.insert_relation(data)
+
+    return jsonify("recevied")
+
 def Setting():
     config = configparser.ConfigParser()
     with open('Config.ini') as file:
