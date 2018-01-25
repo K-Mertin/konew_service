@@ -155,6 +155,25 @@ def add_relation():
 
     return jsonify("recevied")
 
+@app.route('/api/relation/<id>', methods=['DELETE'])
+def delete_relation(id):
+    app.logger.info('delete_relation:'+ id)
+    ip =  request.remote_addr
+    g.dataAccess.delete_relation(id, ip)
+
+    return jsonify("deleted")
+
+@app.route('/api/relation', methods=['PUT'])
+def update_relation():
+    data=json.loads(request.data)
+    print(data)
+    app.logger.info('update_relation:'+data['_id'])
+    ip =  request.remote_addr
+
+    g.dataAccess.update_relation(data, ip)
+
+    return jsonify("updated")
+
 def Setting():
     config = configparser.ConfigParser()
     with open('Config.ini') as file:

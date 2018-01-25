@@ -189,12 +189,17 @@ class DataAccess:
         relation.__delitem__('user')
 
         return self.db['Relations'].insert(relation)
-    
-    def update_relation(self, id, relation):
-        return self.db['Relations'].update_one(id, relation)
 
-    def delete_relation(self, id):
-        return self.db['Relations'].delete_one(id)
+    def delete_relation(self, id, ip):
+
+        self.db['RelationLog'].insert({
+            'action':'delete',
+            'relation':self.db['Relations'].find_one({'_id': ObjectId(id)}),
+            'date' : datetime.datetime.now(),
+            'ip' : ip
+        })
+
+        return self.db['Relations'].delete_one({'_id': ObjectId(id)})
     
     def get_relations(self, queryType, key):
         if queryType == 'reason':
@@ -208,6 +213,24 @@ class DataAccess:
             return self.db['Relations'].aggregate([{'$project':{'reason':1}},{'$group':{'_id':'$reason'}},{'$match':{'_id':{'$regex':'^'+key}}}])
 
         return self.db['Relations'].aggregate([{'$project': {  "combined":  { '$setUnion': [ "$subjects."+queryType, "$objects."+queryType ]}}},{ "$unwind": "$combined" }, { "$group": {"_id": "$combined"}},{"$match":{"_id":{ '$regex': '^'+key} }} ])
+    
+    def update_relation(self, relation, ip):
+        id = relation['_id']
+        relation['modifyDate'] = datetime.datetime.now()
+        relation['modifyUser'] = relation['user']
+        relation.__delitem__('user')
+        relation.__delitem__('_id')
+
+        self.db['RelationLog'].insert({
+            'action':'update',
+            'relation':self.db['Relations'].find_one({'_id': ObjectId(id)}),
+            'date' : datetime.datetime.now(),
+            'user' :  relation['modifyUser'],
+            'ip' : ip
+        })
+
+        return self.db['Relations'].update({'_id':ObjectId(id)},relation)
+
 
 if __name__ == "__main__":
     db = DataAccess()
