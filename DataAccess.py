@@ -230,7 +230,26 @@ class DataAccess:
         })
 
         return self.db['Relations'].update({'_id':ObjectId(id)},relation)
-
+    
+    def download_relations(self):
+        return self.db['Relations'].aggregate([{ "$unwind": "$subjects" },{ "$unwind": "$objects" },{'$project':{
+    "subjects":1,
+    "reason":1,
+    "objects.name": 1,
+    "objects.idNumber": 1,
+    "objects.memo": 1,
+    "objects.relationType":{
+                "$map": {
+                    "input": "$objects.relationType",
+                    "as": "el",
+                    "in": "$$el.itemName"
+                }
+            },
+    "createDate":1,
+            "createUser":1,
+            "modifyDate":1,
+            "modifyUser":1,
+    }}])
 
 if __name__ == "__main__":
     db = DataAccess()
