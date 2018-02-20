@@ -31,8 +31,8 @@ class DataAccess:
     def add_request(self, request):
         self.logger.logger.info('add_request:' + str(request['searchKeys']) )
         request['status'] = 'created'
-        request['createDate'] = datetime.datetime.now()
-        request['requestId'] = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
+        request['createDate'] = datetime.datetime.utcnow()
+        request['requestId'] = str(datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
         request['searchKeys'] = list(map(lambda x:{"key":x, "count":0}, request['searchKeys']))
         return self.db['Requests'].insert(request)
 
@@ -182,8 +182,8 @@ class DataAccess:
         return self.db[collection].drop() 
 
     def insert_relation(self, relation):
-        relation['createDate'] = datetime.datetime.now()
-        relation['modifyDate'] = datetime.datetime.now()
+        relation['createDate'] = datetime.datetime.utcnow()
+        relation['modifyDate'] = datetime.datetime.utcnow()
         relation['createUser'] = relation['user']
         relation['modifyUser'] = relation['user']
         relation.__delitem__('user')
@@ -195,7 +195,7 @@ class DataAccess:
         self.db['RelationLog'].insert({
             'action':'delete',
             'relation':self.db['Relations'].find_one({'_id': ObjectId(id)}),
-            'date' : datetime.datetime.now(),
+            'date' : datetime.datetime.utcnow(),
             'ip' : ip
         })
 
@@ -216,7 +216,7 @@ class DataAccess:
     
     def update_relation(self, relation, ip):
         id = relation['_id']
-        relation['modifyDate'] = datetime.datetime.now()
+        relation['modifyDate'] = datetime.datetime.utcnow()
         relation['modifyUser'] = relation['user']
         relation.__delitem__('user')
         relation.__delitem__('_id')
@@ -224,7 +224,7 @@ class DataAccess:
         self.db['RelationLog'].insert({
             'action':'update',
             'relation':self.db['Relations'].find_one({'_id': ObjectId(id)}),
-            'date' : datetime.datetime.now(),
+            'date' : datetime.datetime.utcnow(),
             'user' :  relation['modifyUser'],
             'ip' : ip
         })

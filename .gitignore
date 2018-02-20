@@ -3,6 +3,7 @@
 # compiled output
 /Log
 /_pycache
+/_pycache_
 
 # dependencies
 /node_modules
