@@ -18,15 +18,14 @@ class relationAccess(DataAccess):
 
         return ret
 
+    def get_logs(self, id):
+        print(id)
+        return self.db['RelationLog'].find({'relation._id':ObjectId(id)}).sort("date", pymongo.ASCENDING)
 
-    def delete_relation(self, id, ip):
+    def delete_relation(self, id, user, ip):
+        self.logger.logger.info('delete_relation:' + id )
 
-        self.db['RelationLog'].insert({
-            'action':'delete',
-            'relation':self.db['Relations'].find_one({'_id': ObjectId(id)}),
-            'date' : datetime.datetime.utcnow(),
-            'ip' : ip
-        })
+        ret = self.log_modify(id, 'deleted', user, ip)
 
         return self.db['Relations'].delete_one({'_id': ObjectId(id)})
     

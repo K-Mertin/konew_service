@@ -50,11 +50,11 @@ def add_relation():
 
     return jsonify("recevied")
 
-@apiRelations.route('/<id>', methods=['DELETE'])
-def delete_relation(id):
+@apiRelations.route('/<id>/<user>', methods=['DELETE'])
+def delete_relation(id, user):
     current_app.logger.info('delete_relation:'+ id)
     ip =  request.remote_addr
-    apiRelations.dataAccess.delete_relation(id, ip)
+    apiRelations.dataAccess.delete_relation(id, user, ip)
 
     return jsonify("deleted")
 
@@ -108,3 +108,23 @@ def upload_file():
         return jsonify('success')
     else:
         return jsonify('failed')
+
+@apiRelations.route('/log/<id>', methods=['GET'])
+def get_logs(id):
+    current_app.logger.info('get_logs')
+    
+    result = apiRelations.dataAccess.get_logs(id)
+
+    ret =list( map(lambda x : {
+            "action" : x["action"],
+            'reason':x['relation']['reason'],
+            'subjects':x['relation']['subjects'],
+            'objects':x['relation']['objects'],
+            'modifyDate':x['relation']['modifyDate'],
+            'modifyUser':x['relation']['modifyUser']
+     } ,list(result)))
+    
+    print(ret)
+
+    return jsonify(ret)
+
