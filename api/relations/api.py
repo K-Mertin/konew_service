@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, g, request, current_app
-from DataAccess import DataAccess
+# from DataAccess import DataAccess
+from dataAccess.relationAccess import relationAccess
 from werkzeug import secure_filename
 import json, os
 
@@ -10,7 +11,7 @@ apiRelations = Blueprint('relations', __name__)
 
 @apiRelations.before_request
 def before_request():
-    apiRelations.dataAccess = DataAccess()
+    apiRelations.dataAccess = relationAccess()
 
 @apiRelations.route('/key/<queryType>/<key>', methods=['GET'])
 def get_relation_keyList(queryType,key):

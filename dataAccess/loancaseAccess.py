@@ -13,7 +13,11 @@ class loancaseAccess(DataAccess):
         loancase['modifyUser'] = loancase['user']
         loancase.__delitem__('user')
 
-        return self.db['Loancases'].insert(loancase)
+        id = self.db['Loancases'].insert(loancase)
+
+        ret = self.log_modify(id, 'insert', loancase['modifyUser'])
+
+        return ret
 
     def get_allPaged_loancases(self, pageSize=10, pageNum=1):
        skips = pageSize * (pageNum - 1)
@@ -22,7 +26,7 @@ class loancaseAccess(DataAccess):
 
        result = {
            "totalCount":totalCount,
-           "data": self.db['Loancases'].find().sort("createDate", pymongo.DESCENDING).skip(skips).limit(pageSize)
+           "data": self.db['Loancases'].find({'status': {"$nin": ['deleted']}}).sort("createDate", pymongo.DESCENDING).skip(skips).limit(pageSize)
        }
        return result
 
@@ -35,15 +39,11 @@ class loancaseAccess(DataAccess):
         loancase.__delitem__('user')
         loancase.__delitem__('_id')
     
-        self.db['LoancaseLog'].insert({
-            'action':'update',
-            'loancase':self.db['Loancases'].find_one({'_id': ObjectId(id)}),
-            'date' : datetime.datetime.utcnow(),
-            'user' :  loancase['modifyUser'],
-            'ip' : ip
-        })
+        self.db['Loancases'].update({'_id':ObjectId(id)},loancase)
 
-        return self.db['Loancases'].update({'_id':ObjectId(id)},loancase)
+        ret = self.log_modify(id, 'update', loancase['modifyUser'], ip)
+
+        return ret
 
     def get_loancases(self, queryType, key, pageSize=10, pageNum=1):
         print('db get loancases')
@@ -69,6 +69,30 @@ class loancaseAccess(DataAccess):
     def check_duplicate(self, queryType, key):
         return self.db['Loancases'].find({queryType:key}).count()
 
+    def delete_loancase(self, loancase, ip):
+
+        id = loancase['_id']
+        self.logger.logger.info('delete_loancase:' + id )
+
+        self.db['Loancases'].update_one({'_id': ObjectId(id)}, {'$set': {'status': 'deleted', 'modifyUser':loancase['user']}})
+
+        ret = self.log_modify(id, 'deleted', loancase['modifyUser'], ip)
+
+        return ret
+
+    def log_modify(self, id, action, user, ip=''):
+        return self.db['LoancaseLog'].insert({
+            'action':action,
+            'loancase':self.db['Loancases'].find_one({'_id': ObjectId(id)}),
+            'date' : datetime.datetime.utcnow(),
+            'user' : user, 
+            'ip' : ip
+        })
+
+    def get_logs(self, id):
+        print(id)
+        return self.db['LoancaseLog'].find({'loancase._id':ObjectId(id)}).sort("date", pymongo.ASCENDING)
+    
 if __name__ == "__main__":
     db = loancaseAccess()
     print(db.get_allPaged_loancases()['data'][0])

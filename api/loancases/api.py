@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, g, request, current_app, make_response
-from loancaseAccess import loancaseAccess
+from dataAccess.loancaseAccess import loancaseAccess
 import json, os
+
 
 apiLoancases = Blueprint('apiLoancases', __name__)
 
@@ -50,6 +51,31 @@ def get_all_loancases():
 
     return jsonify(results)
 
+@apiLoancases.route('/log/<id>', methods=['GET'])
+def get_logs(id):
+    current_app.logger.info('get_logs')
+    
+    result = apiLoancases.dataAccess.get_logs(id)
+
+    ret =list( map(lambda x : {
+            "action" : x["action"],
+            "idNumber":x["loancase"]["idNumber"],
+            "name":x["loancase"]["name"],
+            "status":x["loancase"]["status"],
+            "applyDate":x["loancase"]["applyDate"],
+            "contactor":x["loancase"]["contactor"],
+            "sales":x["loancase"]["sales"],
+            "ticketCredit":x["loancase"]["ticketCredit"],
+            "salesVisitDate":x["loancase"]["salesVisitDate"],
+            "lastReplyDate":x["loancase"]["lastReplyDate"],
+            "modifyDate":x["loancase"]["modifyDate"],
+            "modifyUser":x["loancase"]["modifyUser"]
+     } ,list(result)))
+    
+    print(ret)
+
+    return jsonify(ret)
+
 @apiLoancases.route('/add', methods=['POST'])
 def add_loancase():
     print('add_loancases')
@@ -93,6 +119,20 @@ def check_duplicate(queryType,key):
     results = apiLoancases.dataAccess.check_duplicate(queryType,key)
 
     return jsonify(results)
+
+@apiLoancases.route('/delete', methods=['PUT'])
+def delete_loancase():
+    data=json.loads(request.data)
+    current_app.logger.info('delete_loancase:'+ data['_id'])
+
+    ip =  request.remote_addr
+    try:
+         apiLoancases.dataAccess.delete_loancase(data, ip)
+    except Exception as e:
+        current_app.logger.error(e)
+        return make_response(jsonify(str(e)), 500) 
+
+    return jsonify("deleted")
 
 @apiLoancases.route('/<queryType>/<key>', methods=['GET'])
 def get_loancases(queryType,key):

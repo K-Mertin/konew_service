@@ -32,7 +32,7 @@ class DataAccess:
         self.logger.logger.info('add_request:' + str(request['searchKeys']) )
         request['status'] = 'created'
         request['createDate'] = datetime.datetime.utcnow()
-        request['requestId'] = str(datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
+        request['requestId'] = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))+'-'+request['searchKeys'][0]
         request['searchKeys'] = list(map(lambda x:{"key":x, "count":0}, request['searchKeys']))
         return self.db['Requests'].insert(request)
 
