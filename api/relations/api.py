@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, g, request, current_app
-# from DataAccess import DataAccess
 from dataAccess.relationAccess import relationAccess
 from werkzeug import secure_filename
 import json, os
