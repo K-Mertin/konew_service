@@ -199,15 +199,20 @@ def transformGraph(edgeList):
         node = {'name': edge['subjects']['name'], 'idNumber': edge['subjects']['idNumber']}
         if node not in nodes:
             nodes.append(node)
+            nodeInfo.append({'memo':[edge['subjects']['memo']]})
+
         source = nodes.index(node)
+        # nodeInfo[nodes.index(node)]=nodeInfo[nodes.index(node)].append( edge['subjects']['memo'])
 
         node = {'name': edge['objects']['name'], 'idNumber': edge['objects']['idNumber']}
         if node not in nodes:
             nodes.append(node)
+            nodeInfo.append({'memo':[edge['objects']['memo']],'relations':[edge['objects']['relationType']]})
         target = nodes.index(node)
         
         links.append({ 'source': source, 'target': target, 'value': 1 })
         
     print(links)
     print(nodes)
+    print(nodeInfo)
        
