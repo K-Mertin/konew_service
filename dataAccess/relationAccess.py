@@ -87,6 +87,13 @@ class relationAccess(DataAccess):
             'user': user,
             'ip': ip
         })
+    
+    def get_connections(self, idNumber):
+        return self.db['Relations'].aggregate([
+            {'$match': { '$or': [{ 'subjects.idNumber': idNumber }, { 'objects.idNumber': idNumber }] }},
+            {'$project':{'reason':1, 'subjects':1,'objects':1}},
+            {'$unwind':'$objects'},
+            {'$unwind':'$subjects'}])
 
 if __name__ == "__main__":
     db = relationAccess()

@@ -139,3 +139,75 @@ def get_logs(id):
     print(ret)
 
     return jsonify(ret)
+    
+@apiRelations.route('/network/<idNumber>', methods=['GET'])
+def get_network(idNumber):
+    nodeList = [idNumber]
+    edgeList = []
+    result = apiRelations.dataAccess.get_connections(idNumber)
+    
+    ret = list(map(lambda x: {
+        'subjects': x['subjects'],
+        'objects': x['objects'],
+        'reason' : x['reason']
+    }, list(result)))
+
+    print(idNumber)
+
+    for link in ret:
+        if link in edgeList:
+            continue
+        edgeList.append(link)
+
+        if link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in nodeList:
+            get_connections(link['objects']['idNumber'], nodeList, edgeList)
+        if link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in nodeList:
+            get_connections(link['subjects']['idNumber'], nodeList, edgeList)
+            
+            
+    transformGraph(edgeList)
+    return jsonify(list(ret))
+
+def get_connections(idNumber, processList, edgeList):
+    processList.append(idNumber)
+    result = apiRelations.dataAccess.get_connections(idNumber)
+    print(idNumber)
+
+    ret = list(map(lambda x: {
+        'subjects': x['subjects'],
+        'objects': x['objects'],
+        'reason' : x['reason']
+    }, list(result)))
+    
+    for link in ret:
+        if link in edgeList:
+            continue
+        edgeList.append(link)
+
+        if link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in processList:
+            get_connections(link['objects']['idNumber'], processList, edgeList)
+        if link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in processList:
+            get_connections(link['subjects']['idNumber'], processList, edgeList)
+
+    return
+
+def transformGraph(edgeList):
+    nodes = []
+    links = []
+    nodeInfo = []
+    for edge in edgeList:
+        node = {'name': edge['subjects']['name'], 'idNumber': edge['subjects']['idNumber']}
+        if node not in nodes:
+            nodes.append(node)
+        source = nodes.index(node)
+
+        node = {'name': edge['objects']['name'], 'idNumber': edge['objects']['idNumber']}
+        if node not in nodes:
+            nodes.append(node)
+        target = nodes.index(node)
+        
+        links.append({ 'source': source, 'target': target, 'value': 1 })
+        
+    print(links)
+    print(nodes)
+       
