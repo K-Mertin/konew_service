@@ -11,6 +11,7 @@ class relationAccess(DataAccess):
         relation['modifyDate'] = datetime.datetime.utcnow()
         relation['createUser'] = relation['user']
         relation['modifyUser'] = relation['user']
+        relation['status'] = 'lived'
         relation.__delitem__('user')
 
         id = self.db['Relations'].insert(relation)
@@ -24,11 +25,13 @@ class relationAccess(DataAccess):
         return self.db['RelationLog'].find({'relation._id': ObjectId(id)}).sort("date", pymongo.ASCENDING)
 
     def delete_relation(self, id, user, ip):
-        self.logger.logger.info('delete_relation:' + id)
+        self.logger.logger.info('delete_relation:' + id )
+
+        self.db['Relations'].update_one({'_id': ObjectId(id)}, {'$set': {'status': 'deleted', 'modifyUser':user}})
 
         ret = self.log_modify(id, 'deleted', user, ip)
 
-        return self.db['Relations'].delete_one({'_id': ObjectId(id)})
+        return ret
 
     def get_relations(self, queryType, key):
         if queryType == 'reason':
@@ -84,11 +87,6 @@ class relationAccess(DataAccess):
             'user': user,
             'ip': ip
         })
-
-    def get_logs(self, id):
-        print(id)
-        return self.db['RelationLog'].find({'relation._id': ObjectId(id)}).sort("date", pymongo.ASCENDING)
-
 
 if __name__ == "__main__":
     db = relationAccess()

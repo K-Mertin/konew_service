@@ -1,68 +1,76 @@
 from flask import Blueprint, jsonify, g, request, current_app
 from dataAccess.relationAccess import relationAccess
 from werkzeug import secure_filename
-import json, os
+import json
+import os
 
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'csv'])
 
 
 apiRelations = Blueprint('relations', __name__)
 
+
 @apiRelations.before_request
 def before_request():
     apiRelations.dataAccess = relationAccess()
 
-@apiRelations.route('/key/<queryType>/<key>', methods=['GET'])
-def get_relation_keyList(queryType,key):
-    print(queryType,key)
-    results = apiRelations.dataAccess.get_relation_keyList(queryType,key)
 
-    return jsonify(list(map(lambda x : x['_id'] ,list(results))))
+@apiRelations.route('/key/<queryType>/<key>', methods=['GET'])
+def get_relation_keyList(queryType, key):
+    print(queryType, key)
+    results = apiRelations.dataAccess.get_relation_keyList(queryType, key)
+
+    return jsonify(list(map(lambda x: x['_id'], list(results))))
+
 
 @apiRelations.route('/<queryType>/<key>', methods=['GET'])
-def get_relations(queryType,key):
-    relations = apiRelations.dataAccess.get_relations(queryType,key)
+def get_relations(queryType, key):
+    relations = apiRelations.dataAccess.get_relations(queryType, key)
 
-    result = [] 
+    result = []
     for r in relations:
         result.append({
-            '_id':str(r['_id']),
-            'reason':r['reason'],
-            'subjects':r['subjects'],
-            'objects':r['objects'],
-            'createDate':r['createDate'],
-            'createUser':r['createUser'],
-            'modifyDate':r['modifyDate'],
-            'modifyUser':r['modifyUser']
+            '_id': str(r['_id']),
+            'reason': r['reason'],
+            'subjects': r['subjects'],
+            'objects': r['objects'],
+            'status': r['status'],
+            'createDate': r['createDate'],
+            'createUser': r['createUser'],
+            'modifyDate': r['modifyDate'],
+            'modifyUser': r['modifyUser']
         })
 
     return jsonify(result)
 
+
 @apiRelations.route('/add', methods=['POST'])
 def add_relation():
     print('add_relation')
-    data=json.loads(request.data)
+    data = json.loads(request.data)
     print(data)
-    current_app.logger.info('add_relation:'+ str(data))
+    current_app.logger.info('add_relation:' + str(data))
 
     apiRelations.dataAccess.insert_relation(data)
 
     return jsonify("recevied")
 
+
 @apiRelations.route('/<id>/<user>', methods=['DELETE'])
 def delete_relation(id, user):
-    current_app.logger.info('delete_relation:'+ id)
-    ip =  request.remote_addr
+    current_app.logger.info('delete_relation:' + id)
+    ip = request.remote_addr
     apiRelations.dataAccess.delete_relation(id, user, ip)
 
     return jsonify("deleted")
 
+
 @apiRelations.route('/update', methods=['PUT'])
 def update_relation():
-    data=json.loads(request.data)
+    data = json.loads(request.data)
     print(data)
     current_app.logger.info('update_relation:'+data['_id'])
-    ip =  request.remote_addr
+    ip = request.remote_addr
 
     apiRelations.dataAccess.update_relation(data, ip)
 
@@ -74,25 +82,28 @@ def download_relations():
     relations = apiRelations.dataAccess.download_relations()
     current_app.logger.info('get All')
 
-    result = [] 
+    result = []
     for r in relations:
 
         result.append({
-            '_id':str(r['_id']),
-            'reason':r['reason'],
-            'subjects':r['subjects'],
+            '_id': str(r['_id']),
+            'reason': r['reason'],
+            'subjects': r['subjects'],
             'objects':  r['objects'],
-            'createDate':r['createDate'],
-            'createUser':r['createUser'],
-            'modifyDate':r['modifyDate'],
-            'modifyUser':r['modifyUser']
+            'status': r['status'],
+            'createDate': r['createDate'],
+            'createUser': r['createUser'],
+            'modifyDate': r['modifyDate'],
+            'modifyUser': r['modifyUser']
         })
 
     return jsonify(result)
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @apiRelations.route('/upload', methods=['POST'])
 def upload_file():
@@ -100,30 +111,31 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-        
-        file = open(filename,'r') 
-        print (file.read()) 
+
+        file = open(filename, 'r')
+        print(file.read())
 
         return jsonify('success')
     else:
         return jsonify('failed')
 
+
 @apiRelations.route('/log/<id>', methods=['GET'])
 def get_logs(id):
     current_app.logger.info('get_logs')
-    
+
     result = apiRelations.dataAccess.get_logs(id)
 
-    ret =list( map(lambda x : {
-            "action" : x["action"],
-            'reason':x['relation']['reason'],
-            'subjects':x['relation']['subjects'],
-            'objects':x['relation']['objects'],
-            'modifyDate':x['relation']['modifyDate'],
-            'modifyUser':x['relation']['modifyUser']
-     } ,list(result)))
-    
+    ret = list(map(lambda x: {
+        "action": x["action"],
+        'reason': x['relation']['reason'],
+        'subjects': x['relation']['subjects'],
+        'objects': x['relation']['objects'],
+        'status': x['relation']['status'],
+        'modifyDate': x['relation']['modifyDate'],
+        'modifyUser': x['relation']['modifyUser']
+    }, list(result)))
+
     print(ret)
 
     return jsonify(ret)
-
