@@ -165,13 +165,13 @@ def get_network(idNumber):
             get_connections(link['subjects']['idNumber'], nodeList, edgeList)
             
             
-    transformGraph(edgeList)
-    return jsonify(list(ret))
+    ret = transformGraph(edgeList)
+    return jsonify(ret)
 
 def get_connections(idNumber, processList, edgeList):
     processList.append(idNumber)
     result = apiRelations.dataAccess.get_connections(idNumber)
-    print(idNumber)
+    # print(idNumber)
 
     ret = list(map(lambda x: {
         'subjects': x['subjects'],
@@ -196,23 +196,49 @@ def transformGraph(edgeList):
     links = []
     nodeInfo = []
     for edge in edgeList:
-        node = {'name': edge['subjects']['name'], 'idNumber': edge['subjects']['idNumber']}
+        node = {'name': edge['subjects']['name'], 'idNumber': edge['subjects']['idNumber'],'reason':'' ,'memo':[],'relations':[]}
+        
         if node not in nodes:
             nodes.append(node)
-            nodeInfo.append({'memo':[edge['subjects']['memo']]})
+            nodeInfo.append({'reason':edge['reason'], 'memo':[edge['subjects']['memo']],'relations':['']})
 
         source = nodes.index(node)
-        # nodeInfo[nodes.index(node)]=nodeInfo[nodes.index(node)].append( edge['subjects']['memo'])
 
-        node = {'name': edge['objects']['name'], 'idNumber': edge['objects']['idNumber']}
+        node = {'name': edge['objects']['name'], 'idNumber': edge['objects']['idNumber'],'reason':'','memo':[],'relations':[]}
+        
         if node not in nodes:
             nodes.append(node)
-            nodeInfo.append({'memo':[edge['objects']['memo']],'relations':[edge['objects']['relationType']]})
+            nodeInfo.append({'reason':'', 'memo':[edge['objects']['memo']],'relations':['']})
+
         target = nodes.index(node)
+
+        if nodeInfo[source]['reason'] == '':
+            nodeInfo[source]['reason'] = edge['reason']
+
+        if edge['subjects']['memo'] not in nodeInfo[source]['memo']:
+            nodeInfo[source]['memo']=nodeInfo[source]['memo']+[edge['subjects']['memo']]        
+
+        if edge['objects']['memo'] not in nodeInfo[target]['memo']:
+            nodeInfo[target]['memo']=nodeInfo[target]['memo']+[edge['objects']['memo']]
+
+
+        edge['objects']['relationType'] = [nodes[source]['name']+'->'+ nodes[target]['name'] +'=>'+val for val in  edge['objects']['relationType']]
+
+        if edge['objects']['relationType'] not in nodeInfo[target]['relations']:
+            nodeInfo[target]['relations']=nodeInfo[target]['relations']+[edge['objects']['relationType']]
         
+
+
         links.append({ 'source': source, 'target': target, 'value': 1 })
-        
-    print(links)
-    print(nodes)
-    print(nodeInfo)
-       
+    
+    for i in range(len(nodes)):
+        nodes[i]['reason'] = nodeInfo[i]['reason']
+        nodes[i]['memo'] = [val for sublist in nodeInfo[i]['memo'] for val in sublist]
+        nodes[i]['relations'] = [val for sublist in nodeInfo[i]['relations'] for val in sublist]
+
+    return {'nodes':nodes, 'links':links }
+
+@apiRelations.route('/check/<id>', methods=['GET'])
+def check_duplicate(id):
+    results = apiRelations.dataAccess.check_duplicate(id)
+    return jsonify(results)

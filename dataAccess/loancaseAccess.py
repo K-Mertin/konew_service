@@ -23,7 +23,7 @@ class loancaseAccess(DataAccess):
     def get_allPaged_loancases(self, pageSize=10, pageNum=1):
         skips = pageSize * (pageNum - 1)
 
-        totalCount = self.db['Loancases'].find().count()
+        totalCount = self.db['Loancases'].find({'status': {"$nin": ['deleted']}}).count()
 
         result = {
             "totalCount": totalCount,
