@@ -1,12 +1,15 @@
 from flask import Blueprint, jsonify, g, request, current_app
-from DataAccess import DataAccess
+from dataAccess.requestAccess import requestAccess
 import json, os
+import decorators
 
 apiRequests = Blueprint('requests', __name__)
 
 @apiRequests.before_request
+# @decorators.token_required
 def before_request():
-    apiRequests.dataAccess = DataAccess()
+    apiRequests.dataAccess = requestAccess()
+    # print(current_user)
 
 @apiRequests.route('/list', methods=['GET'])
 def get_all_requests():

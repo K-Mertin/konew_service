@@ -238,7 +238,7 @@ def transformGraph(edgeList):
 
     return {'nodes':nodes, 'links':links }
 
-@apiRelations.route('/check/<id>', methods=['GET'])
-def check_duplicate(id):
-    results = apiRelations.dataAccess.check_duplicate(id)
+@apiRelations.route('/check/<target>/<id>', methods=['GET'])
+def check_duplicate(target,id):
+    results = apiRelations.dataAccess.check_duplicate(target,id)
     return jsonify(results)

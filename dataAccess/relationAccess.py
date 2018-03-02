@@ -95,8 +95,8 @@ class relationAccess(DataAccess):
             {'$unwind':'$objects'},
             {'$unwind':'$subjects'}])
 
-    def check_duplicate(self, id):
-        return self.db['Relations'].find({'subjects.idNumber': id}).count()
+    def check_duplicate(self, target , id):
+        return self.db['Relations'].find({target+'.idNumber': id}).count()
 
 if __name__ == "__main__":
     db = relationAccess()
