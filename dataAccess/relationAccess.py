@@ -7,6 +7,7 @@ import datetime
 
 class relationAccess(DataAccess):
     def insert_relation(self, relation):
+        print(relation)
         relation['createDate'] = datetime.datetime.utcnow()
         relation['modifyDate'] = datetime.datetime.utcnow()
         relation['createUser'] = relation['user']

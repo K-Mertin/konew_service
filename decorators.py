@@ -16,9 +16,8 @@ def token_required(f):
             return jsonify({'message' : 'Token is missing!'}), 401
 
         try: 
-            print(current_app.config['SECRET_KEY'])
             data = jwt.decode(token, current_app.config['SECRET_KEY'])
-            current_user =userAccess().find_user(data['name'])
+            current_user =userAccess().find_user(data['username'])
         except:
             return jsonify({'message' : 'Token is invalid!'}), 401
 

@@ -11,6 +11,7 @@ from api.relations.api import apiRelations
 from api.requests.api import apiRequests
 from api.loancases.api import apiLoancases
 from api.user.api import apiUser
+from api.setting.api import apiSetting
 
 import json
 import configparser
@@ -27,6 +28,8 @@ app.register_blueprint(apiRelations, url_prefix='/api/relations')
 app.register_blueprint(apiRequests, url_prefix='/api/requests')
 app.register_blueprint(apiLoancases, url_prefix='/api/loancases')
 app.register_blueprint(apiUser, url_prefix='/api/user')
+app.register_blueprint(apiSetting, url_prefix='/api/setting')
+
 CORS(app)
 
 @app.before_request
