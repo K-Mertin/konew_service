@@ -74,7 +74,7 @@ def login():
         return make_response(jsonify({'message' :'user not exist'}), 401, {'WWW-Authenticate' : 'Basic realm="Login required!"'})
 
     if check_password_hash(user['password'], auth.password):
-        token = jwt.encode({'username' : user['username'], 'role':user['role'], 'id':str(user['_id']), 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, current_app.config['SECRET_KEY'])
+        token = jwt.encode({'username' : user['username'], 'role':user['role'], 'id':str(user['_id']), 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=600)}, current_app.config['SECRET_KEY'])
 
         return jsonify({'token' : token.decode('UTF-8'), 'username':user['username'], 'role': user['role'] })
  

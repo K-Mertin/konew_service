@@ -3,8 +3,9 @@ from dataAccess.relationAccess import relationAccess
 from werkzeug import secure_filename
 import json
 import os
+import xlrd
 
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'csv'])
+ALLOWED_EXTENSIONS = set(['xlsx'])
 
 
 apiRelations = Blueprint('relations', __name__)
@@ -48,7 +49,7 @@ def get_relations(queryType, key):
 def add_relation():
     print('add_relation')
     data = json.loads(request.data)
-    print(data)
+    # print(data)
     current_app.logger.info('add_relation:' + str(data))
 
     apiRelations.dataAccess.insert_relation(data)
@@ -68,7 +69,7 @@ def delete_relation(id, user):
 @apiRelations.route('/update', methods=['PUT'])
 def update_relation():
     data = json.loads(request.data)
-    print(data)
+    # print(data)
     current_app.logger.info('update_relation:'+data['_id'])
     ip = request.remote_addr
 
@@ -107,17 +108,19 @@ def allowed_file(filename):
 
 @apiRelations.route('/upload', methods=['POST'])
 def upload_file():
+    user = request.form['user']
+
     file = request.files['Document']
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
+        filename = 'uploadTemp.xlsx'
+        #secure_filename(file.filename)
         file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
 
-        file = open(filename, 'r')
-        print(file.read())
+        processFile(filename, user)
 
         return jsonify('success')
     else:
-        return jsonify('failed')
+        return jsonify('檔案格式不符')
 
 
 @apiRelations.route('/log/<id>', methods=['GET'])
@@ -136,7 +139,7 @@ def get_logs(id):
         'modifyUser': x['relation']['modifyUser']
     }, list(result)))
 
-    print(ret)
+    # print(ret)
 
     return jsonify(ret)
     
@@ -152,7 +155,7 @@ def get_network(idNumber):
         'reason' : x['reason']
     }, list(result)))
 
-    print(idNumber)
+    # print(idNumber)
 
     for link in ret:
         if link in edgeList:
@@ -184,9 +187,9 @@ def get_connections(idNumber, processList, edgeList):
             continue
         edgeList.append(link)
 
-        if link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in processList:
+        if link['objects']['idNumber'] and link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in processList:
             get_connections(link['objects']['idNumber'], processList, edgeList)
-        if link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in processList:
+        if link['subjects']['idNumber'] and link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in processList:
             get_connections(link['subjects']['idNumber'], processList, edgeList)
 
     return
@@ -242,3 +245,110 @@ def transformGraph(edgeList):
 def check_duplicate(target,id):
     results = apiRelations.dataAccess.check_duplicate(target,id)
     return jsonify(results)
+
+def processFile(filename, user):
+    workbook = xlrd.open_workbook(filename)
+    sheet = workbook.sheets()[0]
+    
+    for i in range(sheet.nrows):
+        relation = {
+            'reason':'',
+            'subjects': [{}],
+            'objects': [{}],
+            'user': user
+        }
+
+        if i == 0:
+            continue
+
+        relation['reason'] = sheet.row_values(i)[1]
+
+        subjects = []
+        subject = {}
+
+        subject['name'] = sheet.row_values(i)[2] if sheet.row_values(i)[2] != '' else None
+        subject['idNumber'] = str(sheet.row_values(i)[3]).replace('.0','') if sheet.row_values(i)[3] != '' else None
+        subject['memo'] = sheet.row_values(i)[4].split(';;') if sheet.row_values(i)[4] != '' else []
+
+        if not subject['name'] and not subject['idNumber'] :
+                continue
+
+
+        subjects.append(subject)
+
+        relation['subjects'] = subjects
+
+        objects = []
+        obj = {}
+        obj['name'] = sheet.row_values(i)[5]  if sheet.row_values(i)[5] != '' else None
+        obj['idNumber'] = sheet.row_values(i)[6]  if sheet.row_values(i)[6] != '' else None
+        obj['relationType'] = sheet.row_values(i)[7].split(';;') if sheet.row_values(i)[7] != '' else  ['NA']
+        obj['memo'] = []
+
+        if not obj['name']  and not obj['idNumber'] :
+            obj['name'] = 'NA'
+        
+        objects.append(obj)
+        
+        j = 8
+        while j < sheet.ncols: 
+            obj = {}
+            obj['name'] = sheet.row_values(i)[j] if sheet.row_values(i)[j] != '' else None
+            obj['idNumber'] = str(sheet.row_values(i)[j+1]).replace('.0','') if sheet.row_values(i)[j+1] != '' else None
+            obj['relationType'] = sheet.row_values(i)[j+2].split(';;') if sheet.row_values(i)[j+2] != '' else ['NA']
+            obj['memo'] = sheet.row_values(i)[j+3].split(';;') if sheet.row_values(i)[j+3] != '' else []
+
+            if not obj['name']  and not  obj['idNumber'] :
+                j+=4
+                continue
+                
+            objects.append(obj)
+            j+=4
+
+        relation['objects'] = objects
+        importRelation(relation)
+        # print(relation)
+
+def importRelation(relation):
+    idNumber = relation['subjects'][0]['idNumber']
+
+    ret = apiRelations.dataAccess.get_relation(idNumber)
+    # print(ret)
+    if ret:
+        ret['reason'] = relation['reason']
+        ret['subjects'][0]['name'] = relation['subjects'][0]['name']
+
+        if len(ret['subjects'][0]['memo']) > 0:
+           ret['subjects'][0]['memo']= ret['subjects'][0]['memo']+ relation['subjects'][0]['memo']
+        else:
+            ret['subjects'][0]['memo'] =  relation['subjects'][0]['memo']
+        
+        objIdList = list(map(lambda x:x['idNumber'], ret['objects']))
+        # print (objIdList)
+
+        for obj in relation['objects']:
+            if obj['idNumber'] and obj['idNumber'] in objIdList:
+                for ret_obj in ret['objects']:
+                    if ret_obj['idNumber'] == obj['idNumber']:
+                        
+                        ret_obj['name'] = obj['name']
+
+                        for memo in obj['memo']:
+                            if memo not in ret_obj['memo']:
+                                ret_obj['memo'].append(memo)
+
+                        for relationType in obj['relationType']:
+                            if relationType not in ret_obj['relationType']:
+                                ret_obj['relationType'].append(relationType)
+            else:
+                ret['objects'].append(obj)
+
+        
+        # ret['objects'] = relation['objects']
+        ret['_id'] = str(ret['_id'])
+        ret['user'] = relation['user']
+        
+        ret = apiRelations.dataAccess.update_relation(ret, '')
+    else:
+        ret = apiRelations.dataAccess.insert_relation(relation)
+
