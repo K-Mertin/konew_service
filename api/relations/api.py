@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, g, request, current_app
+from flask import Blueprint, jsonify, g, request, current_app, make_response
 from dataAccess.relationAccess import relationAccess
 from werkzeug import secure_filename
 import json
@@ -114,9 +114,12 @@ def upload_file():
     if file and allowed_file(file.filename):
         filename = 'uploadTemp.xlsx'
         #secure_filename(file.filename)
-        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
-
-        processFile(filename, user)
+        try:
+            file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+            processFile(filename, user) 
+        except Exception as e:
+            current_app.logger.error(str(e))
+            return jsonify('匯入失敗')
 
         return jsonify('success')
     else:
@@ -162,9 +165,9 @@ def get_network(idNumber):
             continue
         edgeList.append(link)
 
-        if link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in nodeList:
+        if link['objects']['idNumber'] and link['objects']['idNumber'] != idNumber and not link['objects']['idNumber'] in nodeList:
             get_connections(link['objects']['idNumber'], nodeList, edgeList)
-        if link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in nodeList:
+        if link['subjects']['idNumber'] and link['subjects']['idNumber'] != idNumber and not link['subjects']['idNumber'] in nodeList:
             get_connections(link['subjects']['idNumber'], nodeList, edgeList)
             
             
@@ -260,53 +263,57 @@ def processFile(filename, user):
 
         if i == 0:
             continue
+        try:
+            relation['reason'] = sheet.row_values(i)[1]
 
-        relation['reason'] = sheet.row_values(i)[1]
+            subjects = []
+            subject = {}
 
-        subjects = []
-        subject = {}
+            subject['name'] = sheet.row_values(i)[2] if sheet.row_values(i)[2] != '' else None
+            subject['idNumber'] = str(sheet.row_values(i)[3]).replace('.0','') if sheet.row_values(i)[3] != '' else None
+            subject['memo'] = sheet.row_values(i)[4].split(';;') if sheet.row_values(i)[4] != '' else []
 
-        subject['name'] = sheet.row_values(i)[2] if sheet.row_values(i)[2] != '' else None
-        subject['idNumber'] = str(sheet.row_values(i)[3]).replace('.0','') if sheet.row_values(i)[3] != '' else None
-        subject['memo'] = sheet.row_values(i)[4].split(';;') if sheet.row_values(i)[4] != '' else []
-
-        if not subject['name'] and not subject['idNumber'] :
-                continue
+            if not subject['name'] and not subject['idNumber'] :
+                    continue
 
 
-        subjects.append(subject)
+            subjects.append(subject)
 
-        relation['subjects'] = subjects
+            relation['subjects'] = subjects
 
-        objects = []
-        obj = {}
-        obj['name'] = sheet.row_values(i)[5]  if sheet.row_values(i)[5] != '' else None
-        obj['idNumber'] = sheet.row_values(i)[6]  if sheet.row_values(i)[6] != '' else None
-        obj['relationType'] = sheet.row_values(i)[7].split(';;') if sheet.row_values(i)[7] != '' else  ['NA']
-        obj['memo'] = []
-
-        if not obj['name']  and not obj['idNumber'] :
-            obj['name'] = 'NA'
-        
-        objects.append(obj)
-        
-        j = 8
-        while j < sheet.ncols: 
+            objects = []
             obj = {}
-            obj['name'] = sheet.row_values(i)[j] if sheet.row_values(i)[j] != '' else None
-            obj['idNumber'] = str(sheet.row_values(i)[j+1]).replace('.0','') if sheet.row_values(i)[j+1] != '' else None
-            obj['relationType'] = sheet.row_values(i)[j+2].split(';;') if sheet.row_values(i)[j+2] != '' else ['NA']
-            obj['memo'] = sheet.row_values(i)[j+3].split(';;') if sheet.row_values(i)[j+3] != '' else []
+            obj['name'] = sheet.row_values(i)[5]  if sheet.row_values(i)[5] != '' else None
+            obj['idNumber'] = sheet.row_values(i)[6]  if sheet.row_values(i)[6] != '' else None
+            obj['relationType'] = sheet.row_values(i)[7].split(';;') if sheet.row_values(i)[7] != '' else  ['NA']
+            obj['memo'] = []
 
-            if not obj['name']  and not  obj['idNumber'] :
-                j+=4
-                continue
-                
+            if not obj['name']  and not obj['idNumber'] :
+                obj['name'] = 'NA'
+            
             objects.append(obj)
-            j+=4
+            
+            j = 8
+            while j < sheet.ncols: 
+                obj = {}
+                obj['name'] = sheet.row_values(i)[j] if sheet.row_values(i)[j] != '' else None
+                obj['idNumber'] = str(sheet.row_values(i)[j+1]).replace('.0','') if sheet.row_values(i)[j+1] != '' else None
+                obj['relationType'] = sheet.row_values(i)[j+2].split(';;') if sheet.row_values(i)[j+2] != '' else ['NA']
+                obj['memo'] = sheet.row_values(i)[j+3].split(';;') if sheet.row_values(i)[j+3] != '' else []
 
-        relation['objects'] = objects
-        importRelation(relation)
+                if not obj['name']  and not  obj['idNumber'] :
+                    j+=4
+                    continue
+                    
+                objects.append(obj)
+                j+=4
+
+            relation['objects'] = objects
+            importRelation(relation)
+
+        except Exception as e:
+            current_app.logger.error('第' +i + '行資料處理錯誤')
+            current_app.logger.error(str(e))
         # print(relation)
 
 def importRelation(relation):
@@ -319,9 +326,12 @@ def importRelation(relation):
         ret['subjects'][0]['name'] = relation['subjects'][0]['name']
 
         if len(ret['subjects'][0]['memo']) > 0:
-           ret['subjects'][0]['memo']= ret['subjects'][0]['memo']+ relation['subjects'][0]['memo']
+            for memo in relation['subjects'][0]['memo']:
+                if memo not in  ret['subjects'][0]['memo']:
+                   ret['subjects'][0]['memo'].append(memo)
+        #    ret['subjects'][0]['memo']= ret['subjects'][0]['memo']+ relation['subjects'][0]['memo']
         else:
-            ret['subjects'][0]['memo'] =  relation['subjects'][0]['memo']
+            ret['subjects'][0]['memo'] = relation['subjects'][0]['memo']
         
         objIdList = list(map(lambda x:x['idNumber'], ret['objects']))
         # print (objIdList)
